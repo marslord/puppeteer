@@ -182,6 +182,14 @@ module.exports.addTests = function({testRunner, expect}) {
       });
       expect(result).toBe(undefined);
     });
+    it_fails_ffox('should be able to throw a tricky error', async({page, server}) => {
+      const windowHandle = await page.evaluateHandle(() => window);
+      const errorText = await windowHandle.jsonValue().catch(e => e.message);
+      const error = await page.evaluate(errorText => {
+        throw new Error(errorText);
+      }, errorText).catch(e => e);
+      expect(error.message).toContain(errorText);
+    });
     it('should accept a string', async({page, server}) => {
       const result = await page.evaluate('1 + 2');
       expect(result).toBe(3);
@@ -230,6 +238,18 @@ module.exports.addTests = function({testRunner, expect}) {
       ]);
       const error = await executionContext.evaluate(() => null).catch(e => e);
       expect(error.message).toContain('navigation');
+    });
+    it_fails_ffox('should not throw an error when evaluation does a navigation', async({page, server}) => {
+      await page.goto(server.PREFIX + '/one-style.html');
+      const result = await page.evaluate(() => {
+        window.location = '/empty.html';
+        return [42];
+      });
+      expect(result).toEqual([42]);
+    });
+    it_fails_ffox('should transfer 100Mb of data from page to node.js', async({page, server}) => {
+      const a = await page.evaluate(() => Array(100 * 1024 * 1024 + 1).join('a'));
+      expect(a.length).toBe(100 * 1024 * 1024);
     });
   });
 
